@@ -10,6 +10,8 @@ import (
 // GetOrder API to get order details
 // Permission: authenticated user who created the order
 func (s *service) GetOrder(ctx context.Context, req *order.GetOrderRequest) (*order.GetOrderResponse, error) {
+	ctx, span := s.trace.Start(ctx, "GetOrder")
+	defer span.End()
 	// Authorizer user
 	userID, err := s.authorize(ctx)
 	if err != nil {
@@ -20,7 +22,7 @@ func (s *service) GetOrder(ctx context.Context, req *order.GetOrderRequest) (*or
 	if orderID == "" {
 		return nil, errors.New("order id is required")
 	}
-	resOrder, err := s.DBProvider.GetOrderById(orderID)
+	resOrder, err := s.DBProvider.GetOrderById(ctx, orderID)
 	if err != nil {
 		return nil, err
 	}

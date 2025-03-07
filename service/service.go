@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 
+	"go.opentelemetry.io/otel/sdk/trace"
+	otrace "go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc/metadata"
 
 	order "github.com/lakhansamani/ecom-grpc-apis/order/v1"
@@ -20,7 +22,8 @@ type Dependencies struct {
 	// Add dependencies here
 	DBProvider db.Provider
 	// UserService user.Service
-	UserService user.UserServiceClient
+	UserService   user.UserServiceClient
+	TraceProvider *trace.TracerProvider
 }
 
 // Service implements the Order service.
@@ -31,13 +34,17 @@ type Service interface {
 type service struct {
 	Config
 	Dependencies
+
+	trace otrace.Tracer
 }
 
 // New creates a new Order service.
 func New(cfg Config, deps Dependencies) Service {
+	trace := deps.TraceProvider.Tracer("service")
 	return &service{
 		Config:       cfg,
 		Dependencies: deps,
+		trace:        trace,
 	}
 }
 

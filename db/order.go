@@ -1,6 +1,8 @@
 package db
 
 import (
+	"context"
+
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 
@@ -35,14 +37,14 @@ func (o *Order) BeforeCreate(tx *gorm.DB) (err error) {
 }
 
 // CreateOrder creates a new order in the database
-func (p *provider) CreateOrder(o *Order) (*Order, error) {
-	err := p.db.Create(o).Error
+func (p *provider) CreateOrder(ctx context.Context, o *Order) (*Order, error) {
+	err := p.db.WithContext(ctx).Create(o).Error
 	return o, err
 }
 
 // GetOrderById fetches a order by ID from the database
-func (p *provider) GetOrderById(id string) (*Order, error) {
+func (p *provider) GetOrderById(ctx context.Context, id string) (*Order, error) {
 	var o Order
-	err := p.db.Where("id = ?", id).First(&o).Error
+	err := p.db.WithContext(ctx).Where("id = ?", id).First(&o).Error
 	return &o, err
 }

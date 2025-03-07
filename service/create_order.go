@@ -11,6 +11,8 @@ import (
 // CreateOrder API to create a new order
 // Permission: authenticated user
 func (s *service) CreateOrder(ctx context.Context, req *order.CreateOrderRequest) (*order.CreateOrderResponse, error) {
+	ctx, span := s.trace.Start(ctx, "CreateOrder")
+	defer span.End()
 	// Authorizer user
 	userID, err := s.authorize(ctx)
 	if err != nil {
@@ -28,7 +30,7 @@ func (s *service) CreateOrder(ctx context.Context, req *order.CreateOrderRequest
 	// Static Price
 	price := float64(10.5)
 	// Save order to database
-	resOrder, err := s.DBProvider.CreateOrder(&db.Order{
+	resOrder, err := s.DBProvider.CreateOrder(ctx, &db.Order{
 		UserID:    userID,
 		Product:   product,
 		Quantity:  quantity,
