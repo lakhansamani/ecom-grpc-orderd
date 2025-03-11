@@ -15,6 +15,7 @@ func (s *service) GetOrder(ctx context.Context, req *order.GetOrderRequest) (*or
 	// Authorizer user
 	userID, err := s.authorize(ctx)
 	if err != nil {
+		ordersFetchedMetrics.WithLabelValues(failedResultLabel, req.GetId()).Inc()
 		return nil, err
 	}
 	// Get order from database
@@ -24,12 +25,14 @@ func (s *service) GetOrder(ctx context.Context, req *order.GetOrderRequest) (*or
 	}
 	resOrder, err := s.DBProvider.GetOrderById(ctx, orderID)
 	if err != nil {
+		ordersFetchedMetrics.WithLabelValues(failedResultLabel, orderID).Inc()
 		return nil, err
 	}
 	// Check if user is authorized to get the order
 	if resOrder.UserID != userID {
 		return nil, errors.New("unauthorized")
 	}
+	ordersFetchedMetrics.WithLabelValues(successResultLabel, orderID).Inc()
 	return &order.GetOrderResponse{
 		Order: resOrder.AsAPIOrder(),
 	}, nil

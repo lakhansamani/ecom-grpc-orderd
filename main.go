@@ -4,9 +4,13 @@ import (
 	"context"
 	"log"
 	"net"
+	"net/http"
 	"os"
 
+	grpcprom "github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus"
 	"github.com/joho/godotenv"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
@@ -24,7 +28,16 @@ import (
 	"github.com/lakhansamani/ecom-grpc-orderd/service"
 )
 
-const serviceName = "orderd"
+const (
+	serviceName = "orderd"
+	metricsPort = ":9092"
+)
+
+// Register Metrics
+var (
+	grpcMetrics       = grpcprom.NewServerMetrics()
+	grpcClientMetrics = grpcprom.NewClientMetrics()
+)
 
 func main() {
 	// Read .env file as environment variables
@@ -71,19 +84,30 @@ func main() {
 	serverHandler := otelgrpc.NewServerHandler(
 		otelgrpc.WithTracerProvider(tracerProvider),
 	)
-
+	prometheus.MustRegister(grpcMetrics)
 	// Create a new gRPC server
 	server := grpc.NewServer(
 		grpc.StatsHandler(serverHandler),
+		grpc.ChainUnaryInterceptor(
+			grpcMetrics.UnaryServerInterceptor(),
+		),
+		grpc.ChainStreamInterceptor(
+			grpcMetrics.StreamServerInterceptor(),
+		),
 	)
 
 	openTelemetryClientHandler := otelgrpc.NewClientHandler(
 		otelgrpc.WithTracerProvider(tracerProvider),
 	)
 	// Create UserServiceClient using grpc
-	grpcConn, err := grpc.NewClient(userServiceURL, grpc.WithTransportCredentials(
-		insecure.NewCredentials(),
-	), grpc.WithStatsHandler(openTelemetryClientHandler))
+	grpcConn, err := grpc.NewClient(
+		userServiceURL,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithStatsHandler(openTelemetryClientHandler),
+		// Add gRPC Client Interceptors for Prometheus Metrics
+		grpc.WithUnaryInterceptor(grpcClientMetrics.UnaryClientInterceptor()),
+		grpc.WithStreamInterceptor(grpcClientMetrics.StreamClientInterceptor()),
+	)
 	if err != nil {
 		log.Fatalf("Failed to dial UserService: %v", err)
 	}
@@ -106,6 +130,12 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to listen: %v", err)
 	}
+	// Start Prometheus HTTP server
+	go func() {
+		http.Handle("/metrics", promhttp.Handler())
+		log.Println("Prometheus metrics server running on port", metricsPort)
+		log.Fatal(http.ListenAndServe(metricsPort, nil))
+	}()
 	reflection.Register(server)
 	log.Println("gRPC Server is running on port 50052...")
 	if err := server.Serve(listener); err != nil {

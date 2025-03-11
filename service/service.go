@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"go.opentelemetry.io/otel/sdk/trace"
 	otrace "go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc/metadata"
@@ -41,6 +42,7 @@ type service struct {
 // New creates a new Order service.
 func New(cfg Config, deps Dependencies) Service {
 	trace := deps.TraceProvider.Tracer("service")
+	prometheus.MustRegister(ordersCreatedMetrics, ordersFetchedMetrics)
 	return &service{
 		Config:       cfg,
 		Dependencies: deps,

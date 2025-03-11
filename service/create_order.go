@@ -37,8 +37,10 @@ func (s *service) CreateOrder(ctx context.Context, req *order.CreateOrderRequest
 		UnitPrice: price,
 	})
 	if err != nil {
+		ordersCreatedMetrics.WithLabelValues(failedResultLabel).Inc()
 		return nil, err
 	}
+	ordersCreatedMetrics.WithLabelValues(successResultLabel).Inc()
 	return &order.CreateOrderResponse{
 		Order: resOrder.AsAPIOrder(),
 	}, nil
