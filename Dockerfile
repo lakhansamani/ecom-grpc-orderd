@@ -27,5 +27,8 @@ COPY --from=builder /app/orderd .
 # Expose gRPC port
 EXPOSE 50052
 
+# Expose metrics port
+EXPOSE 9092
+
 # Run the application
 CMD ["./orderd"]
