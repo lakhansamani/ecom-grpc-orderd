@@ -59,9 +59,14 @@ func main() {
 	if userServiceURL == "" {
 		log.Fatal("USER_SERVICE_URL is required")
 	}
+	// Jaeger URL
+	jaegerURL := os.Getenv("JAEGER_URL")
+	if jaegerURL == "" {
+		log.Fatal("JAEGER_URL is required")
+	}
 
 	ctx := context.Background()
-	exporter, err := otlptracegrpc.New(ctx, otlptracegrpc.WithInsecure(), otlptracegrpc.WithEndpoint("localhost:4317"))
+	exporter, err := otlptracegrpc.New(ctx, otlptracegrpc.WithInsecure(), otlptracegrpc.WithEndpoint(jaegerURL))
 	if err != nil {
 		log.Fatalf("failed to create OTLP trace exporter: %v", err)
 	}
